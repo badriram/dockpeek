@@ -24,6 +24,15 @@ Thumbnails are a single still frame per window, captured only while the preview
 is open, held in memory, and released when it closes. Nothing is written to disk or logged
 (logs contain counts only, never titles).
 
+## Install
+
+```sh
+brew install --cask badriram/tools/dockpeek
+```
+
+Or download `DockPeek-vX.Y.Z.zip` from [Releases](../../releases) (signed and notarized). On first launch,
+grant Accessibility in System Settings > Privacy & Security (on macOS 27: Device Control and Data Access).
+
 ## Build
 
 ```sh
@@ -48,6 +57,8 @@ shasum -a 256 -c SHA256SUMS.txt
 
 Maintainers: `scripts/setup-signing.sh` walks through creating the Developer ID certificate and
 App Store Connect API key and storing them as secrets in the protected `release` environment.
+Add `HOMEBREW_TAP_TOKEN` (fine-grained token, Contents read/write on `badriram/homebrew-tools` only)
+to the same environment and each release also bumps the Homebrew cask.
 
 ## Why not the App Sandbox entitlement?
 
