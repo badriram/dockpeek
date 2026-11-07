@@ -4,6 +4,11 @@
 
 Windows-style window previews when hovering Dock icons, built for the smallest possible trust surface.
 
+DockPeek deliberately stays lean: previews, click to focus, close, and nothing else. If you want a
+full-featured alternative (alt-tab switcher, window management, customization and more), use
+[DockDoor](https://github.com/ejbills/DockDoor). DockPeek is for people who want the fewest
+features and permissions in exchange for maximal security.
+
 ## Privacy model
 
 | | DockPeek | Why |
