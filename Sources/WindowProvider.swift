@@ -61,15 +61,35 @@ enum WindowProvider {
         abs(a.width - b.width) < 3 && abs(a.height - b.height) < 3
     }
 
+    /// Activate the app first, then raise the chosen window. Activation completes asynchronously and
+    /// brings the app's previously focused window forward, so raising before (or only once) races with
+    /// it and sometimes lands on the wrong window. Re-check and re-raise until the app reports our
+    /// window as focused.
     static func focus(_ w: WindowEntry, app: NSRunningApplication) {
         if w.minimized {
             AXUIElementSetAttributeValue(w.ax, kAXMinimizedAttribute as CFString, kCFBooleanFalse)
         }
         let appEl = AXUIElementCreateApplication(app.processIdentifier)
-        AXUIElementSetAttributeValue(appEl, kAXFrontmostAttribute as CFString, kCFBooleanTrue)
-        AXUIElementSetAttributeValue(w.ax, kAXMainAttribute as CFString, kCFBooleanTrue)
-        AXUIElementPerformAction(w.ax, kAXRaiseAction as CFString)
+        AXUIElementSetMessagingTimeout(appEl, 0.5)
         app.activate()
+        AXUIElementSetAttributeValue(appEl, kAXFrontmostAttribute as CFString, kCFBooleanTrue)
+        raise(w.ax)
+        ensureFocused(w.ax, appEl: appEl, attemptsLeft: 5)
+    }
+
+    private static func raise(_ win: AXUIElement) {
+        AXUIElementPerformAction(win, kAXRaiseAction as CFString)
+        AXUIElementSetAttributeValue(win, kAXMainAttribute as CFString, kCFBooleanTrue)
+        AXUIElementSetAttributeValue(win, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+    }
+
+    private static func ensureFocused(_ win: AXUIElement, appEl: AXUIElement, attemptsLeft: Int) {
+        guard attemptsLeft > 0 else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+            if let focused = AX.element(appEl, kAXFocusedWindowAttribute), CFEqual(focused, win) { return }
+            raise(win)
+            ensureFocused(win, appEl: appEl, attemptsLeft: attemptsLeft - 1)
+        }
     }
 
     static func close(_ w: WindowEntry) {
