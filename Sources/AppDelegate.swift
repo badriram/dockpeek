@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var onboarding: OnboardingWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        WindowProvider.configureTimeouts()
         controller = PreviewController(settings: settings)
         watcher.onHover = { [weak self] h in self?.controller.dockHovered(h) }
         watcher.onHoverEnd = { [weak self] in self?.controller.dockHoverEnded() }

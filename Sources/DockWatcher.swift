@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import os
+import Security
 
 struct DockHover {
     let app: NSRunningApplication
@@ -49,7 +50,8 @@ final class DockWatcher {
 
     private func attach() {
         detach()
-        guard let dock = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first else {
+        guard let dock = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock")
+            .first(where: Self.isGenuineDock) else {
             scheduleRetry(after: 2.0); return
         }
         let pid = dock.processIdentifier
@@ -106,10 +108,27 @@ final class DockWatcher {
         }
     }
 
+    /// Any app can claim the bundle id com.apple.dock, so require Apple's Dock binary at its system
+    /// location with a valid, Apple-anchored code signature before trusting its hover events.
+    static func isGenuineDock(_ app: NSRunningApplication) -> Bool {
+        guard app.bundleURL?.path == "/System/Library/CoreServices/Dock.app" else { return false }
+        var code: SecCode?
+        let attrs = [kSecGuestAttributePid: app.processIdentifier] as CFDictionary
+        var requirement: SecRequirement?
+        guard SecCodeCopyGuestWithAttributes(nil, attrs, [], &code) == errSecSuccess, let code,
+              SecRequirementCreateWithString("anchor apple and identifier \"com.apple.dock\"" as CFString,
+                                             [], &requirement) == errSecSuccess
+        else { return false }
+        return SecCodeCheckValidity(code, [], requirement) == errSecSuccess
+    }
+
+    /// Matches a Dock icon to the running app by exact bundle path (no symlink resolution, which let a
+    /// planted symlink make one app's path collide with another's). Ambiguous matches are rejected.
     private static func runningApp(at url: URL) -> NSRunningApplication? {
-        let target = url.standardizedFileURL.resolvingSymlinksInPath().path
-        return NSWorkspace.shared.runningApplications.first {
-            $0.bundleURL?.standardizedFileURL.resolvingSymlinksInPath().path == target
+        let target = url.standardizedFileURL.path
+        let matches = NSWorkspace.shared.runningApplications.filter {
+            $0.bundleURL?.standardizedFileURL.path == target
         }
+        return matches.count == 1 ? matches[0] : nil
     }
 }

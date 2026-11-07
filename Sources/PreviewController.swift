@@ -11,6 +11,7 @@ final class PreviewController {
     private var showWork: DispatchWorkItem?
     private var hideTimer: Timer?
     private var generation = 0
+    private var loadingPID: pid_t?
     private var keepAliveRect: CGRect = .zero // hovered icon + gap to the panel (Cocoa coords)
     var hoveredPID: () -> pid_t? = { nil }
 
@@ -54,18 +55,30 @@ final class PreviewController {
     func hide() {
         stopHideTimer()
         showWork?.cancel()
-        generation += 1 // cancels any in-flight thumbnail capture
+        generation += 1 // cancels any in-flight window load or thumbnail capture
+        loadingPID = nil
         panel.orderOut(nil)
         panel.clear()
         current = nil
         windows = []
     }
 
+    /// Loads the window list off the main thread; a result that arrives after the user has moved on
+    /// (hidden the panel or hovered another app) is discarded via `generation`.
     private func show(_ h: DockHover) {
-        let list = WindowProvider.windows(for: h.app)
-        guard !list.isEmpty else { hide(); return }
+        if loadingPID == h.app.processIdentifier { return }
         generation += 1
         let gen = generation
+        loadingPID = h.app.processIdentifier
+        WindowProvider.loadWindows(for: h.app) { [weak self] list in
+            guard let self, self.generation == gen else { return }
+            self.loadingPID = nil
+            self.display(h, list, gen)
+        }
+    }
+
+    private func display(_ h: DockHover, _ list: [WindowEntry], _ gen: Int) {
+        guard !list.isEmpty else { hide(); return }
         current = h
         windows = list
 

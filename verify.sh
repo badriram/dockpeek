@@ -7,9 +7,12 @@ echo "--- entitlements of $APP (expect none) ---"
 codesign -d --entitlements - "$APP" 2>/dev/null || true
 echo "--- networking code in source (expect nothing) ---"
 grep -rnE "URLSession|NWConnection|CFSocket|socket\(|connect\(" Sources/ || echo "  none"
+mkdir -p build
+echo "--- self-test: real sandbox profile, every operation actually attempted ---"
+swiftc -O -swift-version 5 Sources/Sandbox.swift Tools/sandbox-selftest/main.swift -o build/sandbox-selftest
+build/sandbox-selftest
 PID=$(pgrep -x DockPeek || true)
 [ -z "$PID" ] && { echo "DockPeek is not running"; exit 1; }
-mkdir -p build
 cc -O -o build/sandbox-check Tools/sandbox-check.c
 echo "--- kernel sandbox for running DockPeek ---"
 build/sandbox-check "$PID"

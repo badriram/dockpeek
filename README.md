@@ -8,7 +8,7 @@ Windows-style window previews when hovering Dock icons, built for the smallest p
 |---|---|---|
 | Sandbox | **self-applied at launch, kernel-enforced** | `Sources/Sandbox.swift`; fails closed (won't run without it) |
 | Network | **blocked** | `(deny network*)`: no internet, LAN, or listening |
-| Your files | **blocked** | No reads of your home folder (except system Library bits); no writes except its own settings |
+| Your files | **blocked** | No reads under `/Users` (your home, other users, Shared) or `/Volumes` except your fonts and its own settings; writes only to its own temp/cache folders and settings |
 | Launching programs | **blocked** | |
 | Entitlements | **none** | Hardened runtime on |
 | Accessibility | required | Detect hovered Dock icon, list/focus/close windows |
@@ -57,7 +57,8 @@ re-test on future macOS versions.
 ## Verify it yourself
 
 ```sh
-./verify.sh    # entitlements, source grep, then asks the kernel what the running process may do
+./verify.sh    # entitlements, source grep, a self-test that applies the real sandbox profile and
+               # attempts each blocked/allowed operation, then a kernel check of the running app
 ```
 Optionally run [LuLu](https://objective-see.org/products/lulu.html): DockPeek should never appear.
 
