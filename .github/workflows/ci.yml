@@ -1,0 +1,29 @@
+name: CI
+
+# Unsigned build check on every push and PR. Uses no secrets.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build (ad-hoc signed)
+        run: SIGN_IDENTITY=- ./build.sh
+
+      - name: Check entitlements are empty and no networking code exists
+        run: |
+          ents=$(codesign -d --entitlements - --xml build/DockPeek.app 2>/dev/null || true)
+          if echo "$ents" | grep -q "<key>"; then echo "Unexpected entitlements:"; echo "$ents"; exit 1; fi
+          if grep -rnE "URLSession|NWConnection|CFSocket|socket\(|connect\(" Sources/; then
+            echo "Networking code found"; exit 1
+          fi

@@ -17,12 +17,21 @@ lipo -create build/DockPeek-arm64 build/DockPeek-x86_64 -output "$APP/Contents/M
 rm build/DockPeek-arm64 build/DockPeek-x86_64
 
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+# Release builds pass VERSION (e.g. 1.2.0) and BUILD_NUMBER from CI.
+if [ -n "${VERSION:-}" ]; then
+  /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_NUMBER:-1}" "$APP/Contents/Info.plist"
+fi
 
 # APP_SANDBOX=1 re-tests the App Sandbox entitlement (broken on macOS 27: cannot read the Dock).
 ENTITLEMENTS=Resources/DockPeek.entitlements
 [ "${APP_SANDBOX:-0}" = "1" ] && ENTITLEMENTS=Resources/AppSandbox.entitlements
 
-codesign --force --options runtime --timestamp=none \
+# Notarization requires a secure timestamp; local dev builds skip it (works offline).
+TIMESTAMP=--timestamp=none
+[[ "$IDENTITY" == "Developer ID Application"* ]] && TIMESTAMP=--timestamp
+
+codesign --force --options runtime "$TIMESTAMP" \
   --entitlements "$ENTITLEMENTS" \
   --sign "$IDENTITY" "$APP"
 

@@ -33,6 +33,20 @@ open build/DockPeek.app
 Requires macOS 14+ and Xcode or the Command Line Tools. Copy `build/DockPeek.app` to `/Applications` if you want to keep it. (Moving it after granting
 permissions may require re-granting.)
 
+## Releases
+
+Signed, notarized builds are published on the [Releases](../../releases) page by
+`.github/workflows/release.yml` when a `v*` tag is pushed. Each download has a build provenance
+attestation, so you can check it was built by this repo's workflow from public source:
+
+```sh
+gh attestation verify DockPeek-v0.1.0.zip -R badriram/dockpeek
+shasum -a 256 -c SHA256SUMS.txt
+```
+
+Maintainers: `scripts/setup-signing.sh` walks through creating the Developer ID certificate and
+App Store Connect API key and storing them as secrets in the protected `release` environment.
+
 ## Why not the App Sandbox entitlement?
 
 On macOS 27 the App Sandbox blocks Accessibility reads of the Dock (`AXError -25204`) even when
