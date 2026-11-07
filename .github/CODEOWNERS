@@ -1,0 +1,9 @@
+# Changes to these paths need review from the maintainer, because they control release signing
+# (published under the maintainer's Apple Developer ID) or DockPeek's privacy guarantees.
+/.github/                 @badriram
+/scripts/                 @badriram
+/build.sh                 @badriram
+/verify.sh                @badriram
+/Resources/*.entitlements @badriram
+/Sources/Sandbox.swift    @badriram
+/Tools/sandbox-selftest/  @badriram
