@@ -182,6 +182,7 @@ finish() {
 # ──────────────────────────────────────────────────────────────────────────
 # STAGES — author this section. One stage() per step the human takes.
 # Replace the example below. Set TOTAL_STAGES to match the stages you write.
+trap 'if [[ -n "${WORK:-}" ]]; then rm -rf "$WORK"; fi' EXIT   # never leave a loose private key behind
 # ──────────────────────────────────────────────────────────────────────────
 #
 # DockPeek: sets up signed + notarized GitHub releases.
@@ -214,45 +215,84 @@ banner "DockPeek · signed releases for $REPO"
 
 # ── 1 ─────────────────────────────────────────────────────────────────────
 stage "Developer ID Application certificate"
+OSSL=/usr/bin/openssl   # macOS LibreSSL: its .p12 output imports cleanly with `security`
+WORK=""
+CSR_PATH="$HOME/Desktop/DockPeek-DeveloperID.certSigningRequest"
 if has_devid; then
-  say "Found a Developer ID Application certificate in your keychain. Nothing to do."
+  say "Found a Developer ID Application certificate in your keychain; we'll export it next."
+  CERT_SOURCE=keychain
   pause
 else
-  say "This certificate signs apps distributed outside the App Store."
-  note "Only the Account Holder of your Apple Developer team can create it."
-  open -a Xcode 2>/dev/null || warn "couldn't open Xcode; open it manually"
-  step "Xcode → Settings… (⌘,) → Accounts."
-  step "Select your Apple ID, then your team → Manage Certificates…"
-  step "Click + (bottom left) → Developer ID Application. Close the sheet."
-  until has_devid; do
-    pause "Press Enter once it's created…"
-    has_devid || warn "Not found in your keychain yet. Try again (or Ctrl-C to stop)."
+  CERT_SOURCE=web
+  say "We'll create it on developer.apple.com. (Xcode's '+' can fail with"
+  say "'only the Account Holder' even on individual accounts.)"
+  WORK=$(mktemp -d); chmod 700 "$WORK"
+  "$OSSL" req -new -newkey rsa:2048 -nodes -keyout "$WORK/devid.key" -out "$CSR_PATH" \
+    -subj "/CN=DockPeek Developer ID" 2>/dev/null
+  chmod 600 "$WORK/devid.key"
+  printf '  %s✓ created%s private key (kept private in %s)\n' "$GREEN" "$RESET" "$WORK"
+  printf '  %s✓ created%s signing request %s\n' "$GREEN" "$RESET" "$CSR_PATH"
+  note "If the Developer ID options below are greyed out, check Account → Membership details"
+  note "says 'Account Holder' for the Apple ID you're signed in with, and accept any pending agreement."
+  open_url "https://developer.apple.com/account/resources/certificates/add"
+  step "Choose 'Developer ID Application' → Continue."
+  step "Profile type: G2 Sub-CA → choose file: Desktop/DockPeek-DeveloperID.certSigningRequest → Continue."
+  step "Click Download (saves developerID_application.cer to Downloads)."
+  pause "Press Enter once downloaded…"
+  ask CER_PATH "Path to the .cer [~/Downloads/developerID_application.cer]:"
+  CER_PATH=$(expand_path "${CER_PATH:-~/Downloads/developerID_application.cer}")
+  key_mod=$("$OSSL" rsa -in "$WORK/devid.key" -noout -modulus 2>/dev/null | shasum)
+  until [[ -f "$CER_PATH" ]] \
+        && "$OSSL" x509 -inform DER -in "$CER_PATH" -noout -subject 2>/dev/null | grep -q "Developer ID Application" \
+        && [[ "$("$OSSL" x509 -inform DER -in "$CER_PATH" -noout -modulus 2>/dev/null | shasum)" == "$key_mod" ]]; do
+    warn "That file isn't a Developer ID Application certificate for this signing request."
+    ask CER_PATH "Path to the .cer:"; CER_PATH=$(expand_path "$CER_PATH")
   done
-  printf '  %s✓ found%s Developer ID Application certificate\n' "$GREEN" "$RESET"
+  printf '  %s✓ verified%s certificate matches the private key\n' "$GREEN" "$RESET"
   pause
 fi
 
 # ── 2 ─────────────────────────────────────────────────────────────────────
-stage "Export the certificate (.p12)"
-say "CI needs the certificate and its private key, exported with a password."
-open -a "Keychain Access" 2>/dev/null || warn "couldn't open Keychain Access; open it manually"
-step "Keychain Access → login keychain → My Certificates."
-step "Find 'Developer ID Application: …'. Expand it: a private key must be under it."
-step "Right-click the certificate (not the key) → Export…"
-step "Format: Personal Information Exchange (.p12). Save to Desktop as DockPeek-DeveloperID.p12"
-step "Choose a strong export password (store it in your password manager)."
-pause "Press Enter once exported…"
-ask P12_PATH "Path to the .p12 [~/Desktop/DockPeek-DeveloperID.p12]:"
-P12_PATH=$(expand_path "${P12_PATH:-~/Desktop/DockPeek-DeveloperID.p12}")
-while [[ ! -f "$P12_PATH" ]]; do
-  warn "No file at $P12_PATH"
-  ask P12_PATH "Path to the .p12:"; P12_PATH=$(expand_path "$P12_PATH")
-done
-ask_secret P12_PASSWORD "Export password (hidden):"
-subjects=$(P12_PASSWORD="$P12_PASSWORD" openssl pkcs12 -in "$P12_PATH" -nokeys -passin env:P12_PASSWORD 2>/dev/null \
+stage "Package the certificate (.p12)"
+P12_PATH="$HOME/Desktop/DockPeek-DeveloperID.p12"
+if [[ "$CERT_SOURCE" == keychain ]]; then
+  say "Export the certificate and its private key from Keychain Access."
+  open -a "Keychain Access" 2>/dev/null || warn "couldn't open Keychain Access; open it manually"
+  step "login keychain → My Certificates → 'Developer ID Application: …' (a private key must be under it)."
+  step "Right-click the certificate → Export… → .p12 → save to Desktop as DockPeek-DeveloperID.p12"
+  step "Choose a strong export password (store it in your password manager)."
+  pause "Press Enter once exported…"
+  ask P12_IN "Path to the .p12 [~/Desktop/DockPeek-DeveloperID.p12]:"
+  P12_PATH=$(expand_path "${P12_IN:-$P12_PATH}")
+  while [[ ! -f "$P12_PATH" ]]; do
+    warn "No file at $P12_PATH"; ask P12_IN "Path to the .p12:"; P12_PATH=$(expand_path "$P12_IN")
+  done
+  ask_secret P12_PASSWORD "Export password (hidden):"
+else
+  say "Choose a password to protect the .p12 (store both in your password manager)."
+  while :; do
+    ask_secret P12_PASSWORD "New .p12 password (hidden):"
+    ask_secret P12_PASSWORD2 "Repeat it:"
+    [[ -n "$P12_PASSWORD" && "$P12_PASSWORD" == "$P12_PASSWORD2" ]] && break
+    warn "Empty or didn't match; try again."
+  done
+  unset P12_PASSWORD2
+  "$OSSL" x509 -inform DER -in "$CER_PATH" -out "$WORK/devid.pem"
+  P12_PASSWORD="$P12_PASSWORD" "$OSSL" pkcs12 -export -inkey "$WORK/devid.key" -in "$WORK/devid.pem" \
+    -name "Developer ID Application" -out "$P12_PATH" -passout env:P12_PASSWORD
+  chmod 600 "$P12_PATH"
+  rm -rf "$WORK"; WORK=""
+  printf '  %s✓ created%s %s (loose private key deleted)\n' "$GREEN" "$RESET" "$P12_PATH"
+  if confirm "Also add it to your login keychain so you can sign locally? (macOS will ask for the password)"; then
+    security import "$P12_PATH" -k "$HOME/Library/Keychains/login.keychain-db" -T /usr/bin/codesign \
+      && printf '  %s✓ imported%s into login keychain\n' "$GREEN" "$RESET" \
+      || warn "import failed; you can double-click the .p12 later"
+  fi
+fi
+subjects=$(P12_PASSWORD="$P12_PASSWORD" "$OSSL" pkcs12 -in "$P12_PATH" -nokeys -passin env:P12_PASSWORD 2>/dev/null \
   | grep -E "^subject" || true)
 if [[ -z "$subjects" ]]; then
-  warn "Couldn't read the .p12 (wrong password, or an openssl format issue)."
+  warn "Couldn't read the .p12 (wrong password?)."
   confirm "Continue anyway?" || exit 1
 elif [[ $(grep -c . <<<"$subjects") -ne 1 ]] || ! grep -q "Developer ID Application" <<<"$subjects"; then
   warn "The .p12 should contain exactly one 'Developer ID Application' certificate. It contains:"
@@ -316,7 +356,7 @@ note "The certificate stays in your keychain, so you can export a new .p12 any t
 warn "The .p8 can't be downloaded again. Keep a copy in your password manager,"
 warn "or plan to revoke it and generate a new key if you ever need it."
 if confirm "Delete $P12_PATH and $P8_PATH now?"; then
-  rm -f "$P12_PATH" "$P8_PATH"
+  rm -f "$P12_PATH" "$P8_PATH" "$CSR_PATH" "${CER_PATH:-}"
   printf '  %s✓ deleted%s local .p12 and .p8\n' "$GREEN" "$RESET"
 else
   SKIPPED+=("delete $P12_PATH and $P8_PATH once stored safely")
