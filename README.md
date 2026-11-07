@@ -1,3 +1,5 @@
+<img src="docs/icon.png" width="128" alt="DockPeek icon">
+
 # DockPeek
 
 Windows-style window previews when hovering Dock icons, built for the smallest possible trust surface.

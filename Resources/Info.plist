@@ -2,13 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleIdentifier</key>
-	<string>com.badriram.DockPeek</string>
-	<key>CFBundleName</key>
-	<string>DockPeek</string>
 	<key>CFBundleDisplayName</key>
 	<string>DockPeek</string>
 	<key>CFBundleExecutable</key>
+	<string>DockPeek</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.badriram.DockPeek</string>
+	<key>CFBundleName</key>
 	<string>DockPeek</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>

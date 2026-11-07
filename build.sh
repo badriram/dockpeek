@@ -17,6 +17,7 @@ lipo -create build/DockPeek-arm64 build/DockPeek-x86_64 -output "$APP/Contents/M
 rm build/DockPeek-arm64 build/DockPeek-x86_64
 
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"   # regenerate: see Tools/make-icon
 # Release builds pass VERSION (e.g. 1.2.0) and BUILD_NUMBER from CI.
 if [ -n "${VERSION:-}" ]; then
   /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP/Contents/Info.plist"
