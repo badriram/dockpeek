@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  The ONLY entitlement is the App Sandbox. Deliberately absent:
+    com.apple.security.network.client / network.server  -> kernel blocks all network I/O
+    com.apple.security.files.*                            -> no access to your files
+    com.apple.security.automation.apple-events            -> cannot script other apps
+    com.apple.security.personal-information.*             -> no contacts/calendars/location
+    com.apple.security.device.*                           -> no camera/mic/USB/bluetooth
+-->
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+</dict>
+</plist>

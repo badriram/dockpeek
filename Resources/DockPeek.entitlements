@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  No entitlements at all. The App Sandbox entitlement (Resources/AppSandbox.entitlements) blocks
+  reading the Dock on macOS 27, so DockPeek applies its own kernel sandbox at launch instead
+  (Sources/Sandbox.swift): no network, no personal files, no writes, no launching programs.
+  Hardened runtime is on (no code injection, no unsigned libraries, no debugger attach).
+-->
+<dict/>
+</plist>
