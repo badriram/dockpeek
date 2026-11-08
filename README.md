@@ -31,12 +31,42 @@ is open, held in memory, and released when it closes. Nothing is written to disk
 
 ## Install
 
+### Homebrew
+
 ```sh
 brew install --cask badriram/tools/dockpeek
+brew upgrade --cask dockpeek      # later, to update
 ```
 
-Or download `DockPeek-vX.Y.Z.zip` from [Releases](../../releases) (signed and notarized). On first launch,
-grant Accessibility in System Settings > Privacy & Security (on macOS 27: Device Control and Data Access).
+### Manual download
+
+1. Download `DockPeek-vX.Y.Z.zip` and `SHA256SUMS.txt` from [Releases](../../releases).
+2. Optional but recommended, check the download in Terminal (in the folder you downloaded to):
+   ```sh
+   shasum -a 256 -c SHA256SUMS.txt                               # file is intact
+   gh attestation verify DockPeek-vX.Y.Z.zip -R badriram/dockpeek  # built from this repo's source
+   ```
+3. Double-click the zip to unzip it, then drag **DockPeek** into your **Applications** folder.
+4. Open DockPeek. It's signed and notarized, so it opens without Gatekeeper warnings. It lives in
+   the menu bar (no Dock icon).
+
+### First launch: permissions
+
+- **Accessibility** (required): System Settings > Privacy & Security > **Accessibility**, called
+  **Device Control and Data Access** on macOS 27. DockPeek's setup window has a button that opens it.
+  If DockPeek isn't listed, click **+** and choose it from Applications, then turn it on.
+- **Screen Recording** (optional): only if you turn on **Show window thumbnails** in the menu bar.
+  macOS asks the first time.
+
+Both can be revoked at any time in the same place. If you switch between a self-built copy and a
+release, reset the old grant first: `tccutil reset Accessibility com.badriram.DockPeek`.
+
+### Uninstall
+
+Quit DockPeek from its menu, then `brew uninstall --cask --zap dockpeek`, or drag it from
+Applications to the Trash and delete `~/Library/Preferences/com.badriram.DockPeek.plist`.
+Remove it from the permission lists in System Settings, or run
+`tccutil reset All com.badriram.DockPeek`.
 
 ## Build
 
