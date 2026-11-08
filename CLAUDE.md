@@ -7,7 +7,7 @@ model in README.md. Features belong in [DockDoor](https://github.com/ejbills/Doc
 ## Invariants
 
 - **No networking, no entitlements, no third-party code.** CI fails on networking APIs in `Sources/`
-  or any entitlement. The only non-public API is `sandbox_init` (Sources/Sandbox.swift).
+  or any entitlement. The only deprecated API is `sandbox_init` (Sources/Sandbox.swift).
 - **Self-sandbox, not App Sandbox.** On macOS 27 the App Sandbox entitlement blocks Accessibility
   reads of the Dock (AXError -25204) even when trusted, so `main.swift` applies an SBPL profile first
   thing and fails closed. `APP_SANDBOX=1 ./build.sh` re-tests the entitlement on newer macOS.
